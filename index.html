@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/><meta name="theme-color" content="#f7f9f7"/><title>HINGE LOOP | Spatial Lab</title><style>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/><meta name="theme-color" content="#f7f9f7"/><title>HINGE LOOP | Direct Touch</title><style>
 :root{color-scheme:light;--ink:#172b35;--muted:#75888f;--line:#dfe7e5;--paper:#f7f9f7;--teal:#08aead;--blue:#608cc7;--gold:#d8a257}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background:var(--paper);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink)}
@@ -34,6 +34,7 @@ button{font:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
 .sheet{background:white;border-radius:25px;padding:22px;width:min(100%,470px);box-shadow:0 -5px 35px #00282b22}.sheet h2{margin:0 0 6px;font-size:21px;letter-spacing:-.05em}.sheet p{margin:0 0 18px;color:#74898f;font-size:12px}
 .level-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}.level-grid button{height:52px;border:1px solid #dfebe8;border-radius:14px;background:#f6faf8;font-weight:750;font-size:14px}.level-grid button.active{background:#d7f1ec;border-color:#7bccc1;color:#178e84}.sheet-close{margin-top:17px;width:100%;background:#1d3942;color:#fff;padding:13px;border:0;border-radius:13px;font-weight:700}
 @media(max-height:650px){.top{padding-top:calc(env(safe-area-inset-top,0px) + 9px)}.top h1{font-size:24px;margin:8px 0 3px}.progress{margin-top:9px}.footer{padding-top:6px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);min-height:82px}.scene-head{top:5px}.scene-head .task{padding:6px 11px}}
+.top{padding-top:calc(env(safe-area-inset-top,0px) + 13px)}.top h1{font-size:27px;margin:9px 0 2px}.top .subtitle{font-size:11px}.scene-head .task{font-size:12px}.footer{min-height:78px;padding-top:7px}.help{font-size:12px}.scene{min-height:250px}.kicker .brand{letter-spacing:.14em}
 </style></head>
 <body><div class="app">
 <header class="top"><div class="kicker"><div class="brand"><span class="brandmark">◇</span><span>SPATIAL / STUDIES</span></div><button class="mini" id="stageBtn" aria-label="ステージを選ぶ">LEVEL <span id="levelNow">01</span> / 10 ▾</button></div><h1>HINGE LOOP</h1><p class="subtitle" id="subtitle">指で関節を折り、先端をつなぐ。</p><div class="progress" id="progress"></div></header>
@@ -61,7 +62,7 @@ const canvas=$('#board'),ctx=canvas.getContext('2d',{alpha:true});
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));const mod=(x,n)=>(x%n+n)%n;
 const lerp=(a,b,t)=>a+(b-a)*t;
 const ease=t=>1-Math.pow(1-t,3);
-const storageKey='spatial_lab_'+GAME+'_v2';
+const storageKey='spatial_lab_'+GAME+'_v3';
 let current=0, angles=[],solved=false, audioOn=true, audioCtx=null, stageStamp=0;
 let W=390,H=450,DPR=1, winFlash=0, pointer=null, anim=null, camera=0;
 try{const stored=JSON.parse(localStorage.getItem(storageKey)||'{}');current=clamp(stored.level||0,0,9);audioOn=stored.audio!==false}catch(e){}
@@ -82,14 +83,14 @@ function onResize(){const rect=canvas.getBoundingClientRect();W=Math.max(200,rec
 window.addEventListener('resize',onResize);
 function refreshHeader(){
  $('#levelNow').textContent=String(current+1).padStart(2,'0');
- $('#subtitle').textContent=LEVELS[current].caption;
+ $('#subtitle').textContent='棒をつまんで、折り曲げる';
  $('#progress').innerHTML=LEVELS.map((_,i)=>`<i class="${i<current?'done':i===current?'current':''}"></i>`).join('');
  $('#sound').textContent=audioOn?'♫':'♪̸';$('#sound').setAttribute('aria-label',audioOn?'音をオフ':'音をオン');
  $('#win').classList.toggle('show',solved);
  $('#next').style.display=solved?'block':'none';$('#reset').style.display=solved?'none':'block';
- $('#help').textContent=solved?'ぴったり、つながった！':LEVELS[current].hint;
- $('#eyebrow').textContent=solved?'NICE WORK':'HOW TO PLAY';
- $('#task').textContent=LEVELS[current].task||'終点をゴールにつなごう';
+ $('#help').textContent=solved?'ぴったり、つながった！':'棒を指でつかんで、先端を輪へ動かそう';
+ $('#eyebrow').textContent=solved?'CONNECTED':'DRAG TO BEND';
+ $('#task').textContent=current<3?'先端を輪まで運ぼう':'つながる形をつくろう';$('#view').style.display=current>=3?'grid':'none';
 }
 function loadLevel(index){current=clamp(index,0,LEVELS.length-1);stageStamp++;angles=LEVELS[current].initial?LEVELS[current].initial.slice():LEVELS[current].answer.map(()=>0);anim=null;solved=false;camera=0;winFlash=0;pointer=null;refreshHeader();put();}
 function complete(){if(solved)return;solved=true;winFlash=performance.now();sound('win');refreshHeader();try{if(current+1>parseInt(localStorage.getItem(storageKey+'_max')||'0'))localStorage.setItem(storageKey+'_max',current+1);localStorage.setItem(storageKey,JSON.stringify({level:Math.min(current+1,LEVELS.length-1),audio:audioOn}))}catch(e){}}
@@ -102,12 +103,45 @@ $('#stageBtn').onclick=()=>openLevels();
 $('#closeLevels').onclick=()=>$('#modal').classList.remove('open');
 $('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').classList.remove('open')};
 function openLevels(){const grid=$('#levelGrid');grid.innerHTML='';LEVELS.forEach((l,i)=>{const b=document.createElement('button');b.textContent=String(i+1).padStart(2,'0');b.className=i===current?'active':'';b.onclick=()=>{loadLevel(i);$('#modal').classList.remove('open');sound('tick')};grid.appendChild(b)});$('#modal').classList.add('open')}
-function beginPointer(e){if(e.target!==canvas)return;e.preventDefault();try{canvas.setPointerCapture(e.pointerId)}catch(err){}pointer={id:e.pointerId,x:e.offsetX,y:e.offsetY,startX:e.offsetX,startY:e.offsetY,selected:selectPiece(e.offsetX,e.offsetY),used:false};}
-function movePointer(e){if(!pointer||pointer.id!==e.pointerId)return;e.preventDefault();const dx=e.offsetX-pointer.x;
- if(pointer.selected>=0&&Math.abs(dx)>=40){step(pointer.selected,dx>0?1:-1);pointer.x+=Math.sign(dx)*40;pointer.used=true}
+function beginPointer(e){
+ if(e.target!==canvas||solved)return;
+ const j=selectPiece(e.offsetX,e.offsetY);if(j<0)return;
+ e.preventDefault();try{canvas.setPointerCapture(e.pointerId)}catch(err){}
+ const geom=geometry(angles,LEVELS[current].axes);
+ pointer={id:e.pointerId,selected:j,startX:e.offsetX,startY:e.offsetY,
+  handle:project(geom.points[j+2]),angle:angles[j],old:angles.slice(),moved:false};
+ anim=null;
 }
-function endPointer(e){if(!pointer||pointer.id!==e.pointerId)return;e.preventDefault();if(!pointer.used&&pointer.selected>=0)step(pointer.selected,1);pointer=null}
-canvas.addEventListener('pointerdown',beginPointer);canvas.addEventListener('pointermove',movePointer);canvas.addEventListener('pointerup',endPointer);canvas.addEventListener('pointercancel',()=>pointer=null);
+function movePointer(e){
+ if(!pointer||pointer.id!==e.pointerId)return;e.preventDefault();
+ const dx=e.offsetX-pointer.startX,dy=e.offsetY-pointer.startY;
+ if(Math.hypot(dx,dy)<5)return;
+ pointer.moved=true;const j=pointer.selected,goal=[pointer.handle[0]+dx,pointer.handle[1]+dy];
+ let best=Infinity,angle=angles[j];
+ const probe=angles.slice();
+ for(let i=0;i<128;i++){
+   probe[j]=i/32;
+   const p=project(geometry(probe,LEVELS[current].axes).points[j+2]);
+   let d=(p[0]-goal[0])**2+(p[1]-goal[1])**2;
+   d+=Math.min(Math.abs(probe[j]-pointer.angle),4-Math.abs(probe[j]-pointer.angle))*.03;
+   if(d<best){best=d;angle=probe[j]}
+ }
+ angles[j]=angle;
+}
+function endPointer(e){
+ if(!pointer||pointer.id!==e.pointerId)return;e.preventDefault();
+ const p=pointer;pointer=null;
+ if(!p.moved){angles=p.old;return}
+ const j=p.selected,from=angles[j],to=Math.round(from);
+ angles[j]=mod(to,4);anim={i:j,from,to,start:performance.now(),duration:90};
+ sound('tick');
+ if(checkSolved()){const token=stageStamp;setTimeout(()=>{if(token===stageStamp&&checkSolved())complete()},95)}
+}
+canvas.addEventListener('pointerdown',beginPointer);
+canvas.addEventListener('pointermove',movePointer);
+canvas.addEventListener('pointerup',endPointer);
+canvas.addEventListener('pointercancel',()=>{if(pointer){angles=pointer.old;pointer=null}});
+
 let lastTime=0;
 function frame(now){if(W&&H){ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);drawGame(now)}requestAnimationFrame(frame)}
 window.addEventListener('DOMContentLoaded',onResize);
@@ -131,8 +165,8 @@ function checkSolved(){const p=geometry(angles,LEVELS[current].axes),t=solution(
 }
 function project(p){let [x,y,z]=p;for(let i=0;i<camera;i++){let old=x;x=-y;y=old}
  let n=LEVELS[current].axes.length+1;
- const scale=Math.min(70,Math.max(40,(W-45)/(n*.94*1.6))); // all levels fit
- return [W*.44+(x-y)*.83*scale,H*.51+(x+y)*.35*scale-z*.94*scale];
+ const scale=Math.min(92,Math.max(46,(W-45)/(n*.94*1.6))); // all levels fit
+ return [W*.44+(x-y)*.83*scale,H*.44+(x+y)*.35*scale-z*.94*scale];
 }
 function currentGeometry(now){if(anim){let t=clamp((now-anim.start)/anim.duration,0,1),s=angles.map(x=>x);s[anim.i]=lerp(anim.from,anim.to,ease(t));if(t>=1)anim=null;return geometry(s,LEVELS[current].axes)}return geometry(angles,LEVELS[current].axes)}
 function drawGrid(){ctx.save();ctx.strokeStyle='#d8e5e1';ctx.lineWidth=.75;ctx.globalAlpha=.33;
@@ -144,37 +178,50 @@ function drawRod(a,b,accent=false){let dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(
  line(a,b,accent?'#35c0b3':'#74afb4',13);
  line([a[0],a[1]-1],[b[0],b[1]-1],accent?'#81e4dc':'#c2e3e0',4);
  ctx.restore()}
-function drawHinge(p,index,kind,active){ctx.save();
- disk(p,active?17:13,'#ffffff',active?'#27b9b3':'#d1e3e1',active?2.3:2);
- disk(p,7,kind==='y'?'#6b98c3':'#21aaa7');
- disk([p[0]-1.8,p[1]-2.2],2,'#ffffffad');
- ctx.fillStyle='#45636e';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 9px system-ui';ctx.fillText(''+(index+1),p[0],p[1]+23);
- ctx.restore()}
-function drawTarget(pos,targetDir,now){let p=project(pos);
- let rad=16+(solved?Math.sin((now-winFlash)*.008)*1.8:Math.sin(now*.002)*.8);
- ctx.save();ctx.shadowColor=solved?'#00aaa7':'#d8a457';ctx.shadowBlur=solved?20:12;
- disk(p,rad,'#ffffff',solved?'#08b7ae':'#e4b56c',2.3);
- disk(p,5,solved?'#16c8ba':'#e4ac64');ctx.shadowBlur=0;
- if(LEVELS[current].direction){const a=project(plus(pos,mult(targetDir,-.65)));line(a,p,'#d5a35b',3.8);disk(a,3,'#e0af69')}
- ctx.restore();}
-function drawGame(now){
- drawGrid();const state=currentGeometry(now), pts=state.points, target=solution(),end=target.points.at(-1);
- const coords=pts.map(project);
- // subtle guide to target
- drawTarget(end,target.direction,now);
- const segs=[];for(let i=0;i<coords.length-1;i++){segs.push({a:coords[i],b:coords[i+1],depth:pts[i][0]+pts[i][1]+pts[i][2],i})}segs.sort((a,b)=>a.depth-b.depth);
- segs.forEach(o=>drawRod(o.a,o.b,o.i===segs.length-1&&solved));
- disk(coords[0],11,'#173e4a');disk(coords[0],4,'#c8e7e1');
- for(let j=0;j<LEVELS[current].axes.length;j++){drawHinge(coords[j+1],j,LEVELS[current].axes[j],pointer?.selected===j)}
- const tip=coords.at(-1);disk(tip,10,'#fff','#239f9c',2.7);disk(tip,4,'#18b4ae');
- if(solved){ctx.save();ctx.globalAlpha=Math.max(0,1-(now-winFlash)/620);let r=19+Math.max(0,now-winFlash)*.085;disk(tip,r,'#ffffff00','#4acdc1',2);ctx.restore()}
- // abstract tiny caption on bottom left, no tutorial clutter
- ctx.font='700 10px system-ui';ctx.fillStyle='#b0c1c1';ctx.textAlign='left';ctx.fillText(LEVELS[current].direction?'3D / TIP + DIRECTION':'3D / CONNECT',22,H-19);
+function drawHinge(p,index,kind,active){
+ ctx.save();disk(p,active?12:10,'#ffffff',active?'#00aa9f':'#b5cbca',active?3:2);
+ disk(p,active?5.5:4.2,active?'#11b9af':'#678f91');ctx.restore();
 }
-function selectPiece(x,y){if(solved)return-1;const pts=geometry(angles,LEVELS[current].axes).points;let best=-1,d=40;
- for(let i=1;i<pts.length-1;i++){const p=project(pts[i]);const dist=Math.hypot(p[0]-x,p[1]-y);if(dist<d){best=i-1;d=dist}}
+function drawTarget(pos,targetDir,now){
+ let p=project(pos),r=17+Math.sin(now*.003)*.55;
+ ctx.save();ctx.shadowColor='#16b7ad';ctx.shadowBlur=solved?14:5;
+ disk(p,r,'#f8fffee8',solved?'#0dbaa8':'#40c8bd',3);
+ ctx.shadowBlur=0;disk(p,5.2,'#b4eee5');
+ if(LEVELS[current].direction){const a=project(plus(pos,mult(targetDir,-.65)));line(a,p,'#5dbfb4',3);disk(a,3,'#5dbfb4')}
+ ctx.restore();
+}
+function drawGame(now){
+ drawGrid();const state=currentGeometry(now),pts=state.points,target=solution(),coords=pts.map(project);
+ drawTarget(target.points.at(-1),target.direction,now);
+ const segs=[];for(let i=0;i<coords.length-1;i++)segs.push({a:coords[i],b:coords[i+1],depth:pts[i][0]+pts[i][1]+pts[i][2],i});
+ segs.sort((a,b)=>a.depth-b.depth);
+ segs.forEach(o=>drawRod(o.a,o.b,o.i>0&&pointer?.selected===o.i-1));
+ disk(coords[0],11,'#233f47');disk(coords[0],3.5,'#d4efeb');
+ for(let j=0;j<LEVELS[current].axes.length;j++)drawHinge(coords[j+1],j,LEVELS[current].axes[j],pointer?.selected===j);
+ const tip=coords.at(-1);
+ disk(tip,13,'#ffffff','#17afa7',3);disk(tip,6,'#1ab7ae');
+ if(!pointer&&current===0&&!solved){
+   const hinge=coords[1];ctx.save();ctx.setLineDash([3,5]);ctx.beginPath();ctx.arc(hinge[0],hinge[1],Math.hypot(tip[0]-hinge[0],tip[1]-hinge[1]),-.6,1.3);ctx.strokeStyle='#50c3bb88';ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);ctx.restore();
+ }
+ if(solved){let delta=now-winFlash;ctx.save();ctx.globalAlpha=Math.max(0,1-delta/620);disk(tip,18+delta*.07,'#ffffff00','#22baaf',2);ctx.restore()}
+ ctx.fillStyle='#91aaa9';ctx.textAlign='center';ctx.font='600 11px system-ui';ctx.fillText('棒をドラッグ',W*.5,H-20);
+}
+function pointSegmentDistance(x,y,a,b){
+ const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;
+ const t=l>0?clamp(((x-a[0])*dx+(y-a[1])*dy)/l,0,1):0;
+ return Math.hypot(x-a[0]-t*dx,y-a[1]-t*dy);
+}
+function selectPiece(x,y){
+ if(solved)return-1;
+ const pts=geometry(angles,LEVELS[current].axes).points.map(project);
+ let best=-1,dist=36;
+ for(let j=0;j<angles.length;j++){
+  const d=pointSegmentDistance(x,y,pts[j+1],pts[j+2]);
+  if(d<dist){dist=d;best=j}
+ }
  return best;
 }
+
 
 loadLevel(current);onResize();requestAnimationFrame(frame);
 </script></body></html>
